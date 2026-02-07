@@ -8,7 +8,9 @@
 
 PolicyGuard is an MCP (Model Context Protocol) server that provides policy-based access control, incident tracking, and compliance monitoring for AI agents. 
 
-Built for **MCP_HACK//26** hackathon - **"MCP & AI Agents Starter Track"** category.
+Built for **MCP_HACK//26** hackathon - **"MCP & AI Agents Starter Track"** and **"Secure & Govern MCP"** categories.
+
+> **Note:** This project demonstrates working integration with **kagent** (AI agent platform) and can be extended with **kgateway** (API gateway) for additional network-level security.
 
 ---
 
@@ -305,38 +307,103 @@ ALL 6 MCP TOOLS WORKING!
 
 ## kagent Integration
 
-PolicyGuard can be integrated with [kagent](https://kagent.dev) for Kubernetes-native agent management.
+PolicyGuard integrates with [kagent](https://kagent.dev) for Kubernetes-native AI agent management.
 
-### RemoteMCPServer
+### Quick Setup
 
-```yaml
+```bash
+# 1. Install kagent CRDs
+helm install kagent-crds ./kagent-reference/helm/kagent-crds -n kagent --create-namespace
+
+# 2. Install kagent with Ollama (free local LLM)
+helm upgrade --install kagent ./kagent-reference/helm/kagent -n kagent \
+  --set providers.default=ollama \
+  --set providers.ollama.model=qwen2.5:1.5b \
+  --set tag=0.7.13
+
+# 3. Deploy PolicyGuard
+helm install policyguard ./helm/policyguard -n policyguard --create-namespace
+
+# 4. Create RemoteMCPServer
+kubectl apply -f - <<EOF
 apiVersion: kagent.dev/v1alpha2
 kind: RemoteMCPServer
 metadata:
   name: policyguard
+  namespace: kagent
 spec:
   protocol: STREAMABLE_HTTP
   url: http://policyguard.policyguard:8000/mcp
-```
+  timeout: 30s
+EOF
 
-### Agent
-
-```yaml
+# 5. Create PolicyGuard Agent
+kubectl apply -f - <<EOF
 apiVersion: kagent.dev/v1alpha2
 kind: Agent
 metadata:
-  name: secure-agent
+  name: policyguard-agent
+  namespace: kagent
 spec:
+  description: "Security agent using PolicyGuard"
   type: Declarative
   declarative:
-    systemMessage: "Call validate_action before any operation"
+    modelConfig: "default-model-config"
+    systemMessage: |
+      You are a PolicyGuard Security Agent. Use the PolicyGuard tools to:
+      - validate_action: Check if actions are allowed
+      - register_agent: Register new agents
+      - create_policy: Define security rules
+      - get_compliance_status: View compliance dashboard
     tools:
     - type: McpServer
       mcpServer:
         name: policyguard
+        kind: RemoteMCPServer
+        apiGroup: kagent.dev
         toolNames:
         - validate_action
         - register_agent
+        - create_policy
+        - get_audit_log
+        - get_compliance_status
+        - report_incident
+EOF
+```
+
+### Verified Working
+
+```bash
+# Check status
+$ kubectl get agents,remotemcpservers -n kagent
+NAME                TYPE          READY   ACCEPTED
+policyguard-agent   Declarative   True    True
+
+NAME          PROTOCOL          URL                                       ACCEPTED
+policyguard   STREAMABLE_HTTP   http://policyguard.policyguard:8000/mcp   True
+
+# Invoke agent via CLI
+$ kagent invoke -t "Get compliance status" --agent policyguard-agent
+
+Response:
+- Security Posture: Healthy
+- Total Policies: 1, Enabled: 1  
+- Total Incidents: 0
+- Agents Registered: 0
+
+# Test validation
+$ kagent invoke -t "Can test-agent delete the database?" --agent policyguard-agent
+
+Response:
+The action delete_database was not allowed for test-agent.
+Reason: Delete operations require admin trust level.
+```
+
+### Access kagent UI
+
+```bash
+kubectl port-forward -n kagent svc/kagent-ui 8080:8080
+# Open http://localhost:8080
 ```
 
 ---
