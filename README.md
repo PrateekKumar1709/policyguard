@@ -17,7 +17,6 @@ Built for **MCP_HACK//26** hackathon - **"MCP & AI Agents Starter Track"** and *
 ## Table of Contents
 
 - [Overview](#overview)
-- [What I Learned](#what-i-learned)
 - [Features](#features)
 - [Architecture](#architecture)
 - [MCP Tools](#mcp-tools)
@@ -50,24 +49,6 @@ PolicyGuard adds a security layer that agents call **before** taking action:
 ```
 User Request → AI Agent → PolicyGuard (validate_action) → Allowed/Denied
 ```
-
----
-
-## What I Learned
-
-This was my first time building:
-
-1. **An MCP Server** - Using FastMCP to expose tools via Model Context Protocol
-2. **Policy Engine** - Pattern matching and trust level evaluation
-3. **Helm Charts** - Kubernetes-native deployment
-4. **kagent Integration** - Creating Agent and RemoteMCPServer custom resources
-
-### Key Takeaways
-
-- MCP makes it easy to expose tools to AI agents
-- FastMCP simplifies Python MCP server development
-- Kubernetes CRDs enable declarative agent management
-- Security should be built-in, not bolted-on
 
 ---
 
