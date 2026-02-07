@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "policyguard.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "policyguard.labels" . | nindent 4 }}
+data:
+  policies.json: |
+    [
+      {{- with .Values.config.defaultPolicy }}
+      {
+        "id": {{ .id | quote }},
+        "name": {{ .name | quote }},
+        "description": {{ .description | quote }},
+        "rules": {{ .rules | toJson }},
+        "enabled": {{ .enabled }},
+        "priority": {{ .priority }}
+      }
+      {{- end }}
+    ]
+  agents.json: "{}"
+  audit_log.json: "[]"
+  incidents.json: "[]"

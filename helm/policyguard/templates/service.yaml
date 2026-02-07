@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "policyguard.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "policyguard.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "policyguard.selectorLabels" . | nindent 4 }}

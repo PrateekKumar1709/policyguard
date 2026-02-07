@@ -1,0 +1,6 @@
+apiVersion: v2
+name: policyguard
+description: Security & Governance MCP server for AI agent deployments
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

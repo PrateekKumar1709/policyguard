@@ -1,0 +1,16 @@
+{{- if .Values.kagentIntegration.enabled }}
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  name: {{ include "policyguard.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "policyguard.labels" . | nindent 4 }}
+spec:
+  description: "PolicyGuard - Security & Governance MCP Server for AI Agents"
+  protocol: STREAMABLE_HTTP
+  url: {{ include "policyguard.serverUrl" . }}
+  timeout: 30s
+  sseReadTimeout: 5m0s
+  terminateOnClose: true
+{{- end }}

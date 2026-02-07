@@ -1,0 +1,67 @@
+# Deploy RemoteMCPServer (requires kagent CRDs)
+kagentIntegration:
+  enabled: false
+
+replicas: 1
+
+image:
+  registry: ""
+  repository: policyguard
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+securityContext: {}
+
+tolerations: []
+
+nodeSelector: {}
+
+service:
+  type: ClusterIP
+  port: 8000
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+# Additional Arguments for the mcp server
+args: []
+
+# Additional volumes
+volumes: []
+
+# Additional volumeMounts
+volumeMounts: []
+
+# PolicyGuard configuration
+config:
+  # Default security policy
+  defaultPolicy:
+    id: "default-security"
+    name: "Default Security Policy"
+    description: "Block dangerous operations for non-admin agents"
+    rules:
+      - condition:
+          tool_pattern: "delete_*"
+          trust_level_below: "admin"
+        action: "deny"
+        message: "Delete operations require admin trust level"
+      - condition:
+          tool_pattern: "drop_*"
+          trust_level_below: "admin"
+        action: "deny"
+        message: "Drop operations require admin trust level"
+    enabled: true
+    priority: 100
