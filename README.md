@@ -1,27 +1,28 @@
 # PolicyGuard
 
-**Security & Governance for AI Agents using kagent + agentgateway**
+**Security & Governance MCP Server for AI Agents**
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![kagent](https://img.shields.io/badge/kagent-compatible-green.svg)](https://kagent.dev/)
 [![MCP](https://img.shields.io/badge/MCP-compatible-purple.svg)](https://modelcontextprotocol.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-PolicyGuard is an AI agent security solution built with **kagent** and **agentgateway** for the **MCP_HACK//26** hackathon in the **"Secure & Govern MCP"** category.
+PolicyGuard is an MCP (Model Context Protocol) server that provides policy-based access control, incident tracking, and compliance monitoring for AI agents. 
+
+Built for **MCP_HACK//26** hackathon - **"MCP & AI Agents Starter Track"** category.
 
 ---
 
 ## Table of Contents
 
 - [Overview](#overview)
-- [Architecture](#architecture)
-- [Components](#components)
+- [What I Learned](#what-i-learned)
 - [Features](#features)
-- [Quick Start](#quick-start)
-- [Deployment](#deployment)
+- [Architecture](#architecture)
 - [MCP Tools](#mcp-tools)
-- [Configuration](#configuration)
+- [Quick Start](#quick-start)
+- [Kubernetes Deployment](#kubernetes-deployment)
 - [Testing](#testing)
+- [kagent Integration](#kagent-integration)
 - [Security Model](#security-model)
 - [Project Structure](#project-structure)
 - [License](#license)
@@ -30,225 +31,107 @@ PolicyGuard is an AI agent security solution built with **kagent** and **agentga
 
 ## Overview
 
-As AI agents become more autonomous, organizations need robust controls to govern their behavior. PolicyGuard provides a complete security solution using the kagent ecosystem:
+As AI agents become more autonomous, organizations need controls to govern their behavior. PolicyGuard is my first MCP server project - built to explore how security and governance can be implemented at the MCP layer.
+
+### The Problem
+
+AI agents can call any tool they have access to. Without governance:
+- Agents might perform destructive operations
+- No audit trail of agent actions
+- No way to enforce security policies
+- No visibility into compliance
+
+### The Solution
+
+PolicyGuard adds a security layer that agents call **before** taking action:
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     kagent Agent                                │
-│              (policyguard-agent)                                │
-│                                                                 │
-│  "Before ANY action, I MUST call validate_action"              │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              │ MCP Protocol
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     agentgateway                                │
-│                                                                 │
-│  • Rate limiting        • CORS policies                        │
-│  • Request logging      • Protocol security                    │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              │ HTTP/MCP
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     PolicyGuard MCP Server                      │
-│                                                                 │
-│  • validate_action      • create_policy                        │
-│  • register_agent       • get_audit_log                        │
-│  • report_incident      • get_compliance_status                │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### What This Demonstrates
-
-| Hackathon Technology | How We Use It |
-|---------------------|---------------|
-| **kagent** | Creates the `policyguard-agent` - an AI agent that enforces security policies |
-| **agentgateway** | Proxies and secures MCP traffic with rate limiting and observability |
-| **MCP** | PolicyGuard exposes 6 security tools via Model Context Protocol |
-
----
-
-## Architecture
-
-### Three-Layer Security
-
-```
-User Request
-     │
-     ▼
-┌────────────────┐
-│ kagent Agent   │  Layer 1: Agent-Level Security
-│                │  - System prompt enforces "validate before action"
-│                │  - A2A skills for security tasks
-└────────────────┘
-     │
-     ▼
-┌────────────────┐
-│ agentgateway   │  Layer 2: Network-Level Security
-│                │  - Rate limiting (100 req/min)
-│                │  - CORS policies
-│                │  - Request/response logging
-└────────────────┘
-     │
-     ▼
-┌────────────────┐
-│ PolicyGuard    │  Layer 3: Application-Level Security
-│ MCP Server     │  - Policy-based access control
-│                │  - Trust level enforcement
-│                │  - Audit trail & incidents
-└────────────────┘
+User Request → AI Agent → PolicyGuard (validate_action) → Allowed/Denied
 ```
 
 ---
 
-## Components
+## What I Learned
 
-### 1. PolicyGuard MCP Server (`helm/policyguard/`)
+This was my first time building:
 
-The core MCP server providing security tools:
+1. **An MCP Server** - Using FastMCP to expose tools via Model Context Protocol
+2. **Policy Engine** - Pattern matching and trust level evaluation
+3. **Helm Charts** - Kubernetes-native deployment
+4. **kagent Integration** - Creating Agent and RemoteMCPServer custom resources
 
-- **validate_action** - Gate every action against security policies
-- **register_agent** - Manage agent identities and trust levels
-- **create_policy** - Define security rules
-- **get_audit_log** - Query action history
-- **get_compliance_status** - Security metrics dashboard
-- **report_incident** - Track security violations
+### Key Takeaways
 
-### 2. PolicyGuard Agent (`helm/policyguard-agent/`)
-
-A kagent `Agent` custom resource that:
-
-- Uses PolicyGuard as its MCP server
-- Has a system prompt requiring security validation
-- Exposes A2A skills for security operations
-
-### 3. agentgateway (`helm/agentgateway/`)
-
-Proxies MCP traffic with:
-
-- Rate limiting protection
-- CORS configuration
-- Request logging
-- Protocol-level security
+- MCP makes it easy to expose tools to AI agents
+- FastMCP simplifies Python MCP server development
+- Kubernetes CRDs enable declarative agent management
+- Security should be built-in, not bolted-on
 
 ---
 
 ## Features
 
-| Feature | Component | Description |
-|---------|-----------|-------------|
-| **Policy Enforcement** | MCP Server | Evaluate actions against security rules |
-| **Trust Levels** | MCP Server | low, medium, high, admin hierarchy |
-| **Auto-Registration** | MCP Server | Unknown agents get minimal trust |
-| **Incident Tracking** | MCP Server | Automatic violation logging |
-| **Rate Limiting** | agentgateway | Prevent abuse (100 req/min default) |
-| **Audit Trail** | MCP Server | Complete action history |
-| **A2A Skills** | kagent Agent | Security operations as callable skills |
+| Feature | Description |
+|---------|-------------|
+| **Policy Enforcement** | Validate actions against security rules |
+| **Trust Levels** | low, medium, high, admin hierarchy |
+| **Pattern Matching** | Wildcard patterns like `delete_*`, `*_production` |
+| **Auto-Registration** | Unknown agents get minimal trust |
+| **Incident Tracking** | Automatic violation logging |
+| **Audit Trail** | Complete action history |
+| **Compliance Dashboard** | Security metrics at a glance |
 
 ---
 
-## Quick Start
+## Architecture
 
-### Prerequisites
-
-- Kubernetes cluster (Kind, Minikube, or cloud)
-- Helm 3.x
-- kagent installed ([kagent.dev](https://kagent.dev))
-- kubectl
-
-### 1. Install kagent CRDs
-
-```bash
-# Install kagent (follow kagent.dev docs)
-helm repo add kagent https://kagent.dev/charts
-helm install kagent kagent/kagent -n kagent-system --create-namespace
 ```
-
-### 2. Deploy PolicyGuard Stack
-
-```bash
-# Create namespace
-kubectl create namespace policyguard
-
-# Deploy PolicyGuard MCP Server
-helm install policyguard ./helm/policyguard -n policyguard
-
-# Deploy agentgateway (optional, adds rate limiting)
-helm install agentgateway ./helm/agentgateway -n policyguard
-
-# Deploy the kagent Agent
-helm install policyguard-agent ./helm/policyguard-agent -n policyguard
-```
-
-### 3. Verify Deployment
-
-```bash
-# Check pods
-kubectl get pods -n policyguard
-
-# Check the kagent Agent
-kubectl get agents -n policyguard
-
-# Check RemoteMCPServer registration
-kubectl get remotemcpservers -n policyguard
-```
-
----
-
-## Deployment
-
-### Option A: Full Stack (Recommended)
-
-Deploy all three components for complete security:
-
-```bash
-# 1. PolicyGuard MCP Server
-helm install policyguard ./helm/policyguard -n policyguard
-
-# 2. agentgateway for network security
-helm install agentgateway ./helm/agentgateway -n policyguard \
-  --set policyguardUrl=http://policyguard:8000/mcp
-
-# 3. kagent Agent that uses PolicyGuard
-helm install policyguard-agent ./helm/policyguard-agent -n policyguard \
-  --set policyguardUrl=http://agentgateway:3000/mcp
-```
-
-### Option B: MCP Server Only
-
-For integration with existing agents:
-
-```bash
-helm install policyguard ./helm/policyguard -n policyguard
-```
-
-### Option C: Local Development
-
-```bash
-# Start PolicyGuard locally
-python src/main.py --transport http --port 8000
-
-# Run with agentgateway (requires agentgateway binary)
-agentgateway --config agentgateway/config-local.yaml
+┌─────────────────────────────────────────────────────────────────┐
+│                         AI Agent / LLM                          │
+│                                                                 │
+│  "Before any action, call validate_action to check permission" │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              │ MCP Protocol
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     PolicyGuard MCP Server                      │
+│                                                                 │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
+│  │  validate   │  │   create    │  │   report    │             │
+│  │   action    │  │   policy    │  │  incident   │             │
+│  └─────────────┘  └─────────────┘  └─────────────┘             │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
+│  │  register   │  │  get_audit  │  │    get      │             │
+│  │   agent     │  │    log      │  │ compliance  │             │
+│  └─────────────┘  └─────────────┘  └─────────────┘             │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+                    ┌───────────────────┐
+                    │   JSON Storage    │
+                    │   (policies,      │
+                    │    agents,        │
+                    │    audit_log,     │
+                    │    incidents)     │
+                    └───────────────────┘
 ```
 
 ---
 
 ## MCP Tools
 
-### validate_action
+PolicyGuard exposes 6 tools via MCP:
 
-**The primary security gate.** Must be called before any action.
+### 1. `validate_action` ⭐ Primary Tool
+
+Check if an action is allowed before executing it.
 
 ```json
 {
   "action_type": "tool_call",
   "target": "delete_records",
-  "agent_id": "my-agent",
-  "parameters": "{}",
-  "context": "User requested deletion"
+  "agent_id": "my-agent"
 }
 ```
 
@@ -257,135 +140,129 @@ agentgateway --config agentgateway/config-local.yaml
 {
   "action_id": "act_a1b2c3d4e5f6",
   "allowed": false,
-  "reason": "Delete operations require admin trust level",
-  "warnings": []
+  "reason": "Delete operations require admin trust level"
 }
 ```
 
-### register_agent
+### 2. `register_agent`
 
 Register an agent with a trust level.
 
 ```json
 {
   "agent_id": "data-processor",
-  "name": "Data Processing Agent",
-  "trust_level": "medium",
-  "allowed_tools": ["read_*"],
-  "denied_tools": ["delete_*"]
+  "name": "Data Agent",
+  "trust_level": "medium"
 }
 ```
 
-### create_policy
+### 3. `create_policy`
 
-Create a security policy.
+Create security rules.
 
 ```json
 {
   "policy_id": "block-deletes",
-  "name": "Block Delete Operations",
-  "rules": "[{\"condition\": {\"tool_pattern\": \"delete_*\", \"trust_level_below\": \"admin\"}, \"action\": \"deny\"}]",
-  "priority": 100
+  "name": "Block Deletes",
+  "rules": "[{\"condition\": {\"tool_pattern\": \"delete_*\"}, \"action\": \"deny\"}]"
 }
 ```
 
-### get_audit_log
+### 4. `get_audit_log`
 
-Query the audit trail.
+Query action history.
 
-```json
-{
-  "agent_id": "my-agent",
-  "limit": 50,
-  "include_allowed": true
-}
+### 5. `get_compliance_status`
+
+Get security dashboard metrics.
+
+### 6. `report_incident`
+
+Manually report security incidents.
+
+---
+
+## Quick Start
+
+### Prerequisites
+
+- Python 3.10+
+- pip
+
+### Local Installation
+
+```bash
+# Clone
+git clone https://github.com/PrateekKumar1709/policyguard.git
+cd policyguard
+
+# Setup
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+
+# Run
+python src/main.py
 ```
 
-### get_compliance_status
+### Test the Tools
 
-Get security metrics.
+```python
+import json
+from src.tools.validate_action import validate_action
+from src.tools.register_agent import register_agent
 
-```json
-{}
+# Register an agent
+result = json.loads(register_agent.fn(
+    agent_id="test-agent",
+    name="Test Agent",
+    trust_level="medium"
+))
+print(f"Registered: {result['agent_id']}")
+
+# Validate an action
+result = json.loads(validate_action.fn(
+    action_type="tool_call",
+    target="read_data",
+    agent_id="test-agent"
+))
+print(f"Allowed: {result['allowed']}")
 ```
 
-**Response:**
-```json
-{
-  "total_agents": 5,
-  "active_agents": 4,
-  "suspended_agents": 1,
-  "total_policies": 3,
-  "recent_violations": 12,
-  "compliance_score": 87.5
-}
-```
+### HTTP Mode
 
-### report_incident
-
-Report a security incident.
-
-```json
-{
-  "agent_id": "suspicious-agent",
-  "incident_type": "unauthorized_access",
-  "severity": "critical",
-  "description": "Attempted credential access",
-  "auto_suspend": true
-}
+```bash
+python src/main.py --transport http --port 8000
 ```
 
 ---
 
-## Configuration
+## Kubernetes Deployment
 
-### Environment Variables
+PolicyGuard includes a Helm chart for Kubernetes deployment.
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `POLICYGUARD_DATA_DIR` | `data` | Data storage directory |
-| `MCP_TRANSPORT_MODE` | `stdio` | Transport: `stdio` or `http` |
-| `HOST` | `0.0.0.0` | HTTP server host |
-| `PORT` | `8000` | HTTP server port |
+### Using Kind
 
-### Policy Rules
+```bash
+# Create cluster
+kind create cluster --name policyguard
 
-```json
-{
-  "id": "example-policy",
-  "name": "Example Policy",
-  "rules": [
-    {
-      "condition": {
-        "tool_pattern": "delete_*",
-        "trust_level_below": "admin"
-      },
-      "action": "deny",
-      "message": "Delete requires admin trust"
-    }
-  ],
-  "enabled": true,
-  "priority": 100
-}
+# Build and load image
+docker build -t policyguard:latest .
+kind load docker-image policyguard:latest --name policyguard
+
+# Deploy
+kubectl create namespace policyguard
+helm install policyguard ./helm/policyguard -n policyguard
+
+# Verify
+kubectl get pods -n policyguard
 ```
 
-### agentgateway Configuration
+### Port Forward
 
-```yaml
-binds:
-  - port: 3000
-    listeners:
-      - routes:
-          - policies:
-              rateLimit:
-                requestsPerMinute: 100
-                burstSize: 20
-            backends:
-              - mcp:
-                  targets:
-                    - name: policyguard
-                      http:
-                        url: http://policyguard:8000/mcp
+```bash
+kubectl port-forward -n policyguard svc/policyguard 8000:8000
 ```
 
 ---
@@ -395,14 +272,10 @@ binds:
 ### Unit Tests
 
 ```bash
-# Activate virtual environment
-source .venv/bin/activate
-
-# Run tests
 pytest tests/ -v
 ```
 
-### Test Output
+### Test Results
 
 ```
 tests/test_tools.py::TestValidateAction::test_allow_read_for_low_trust PASSED
@@ -415,51 +288,90 @@ tests/test_tools.py::TestCreatePolicy::test_create_valid_policy PASSED
 ============================== 16 passed ==============================
 ```
 
-### Integration Test
+### E2E Test Output
 
-```bash
-# Deploy to Kind cluster
-./scripts/setup-kind.sh
+```
+[1/6] register_agent      ✅ SUCCESS
+[2/6] create_policy       ✅ SUCCESS  
+[3/6] validate_action     ✅ ALLOWED (read_data)
+[4/6] validate_action     ✅ DENIED (delete_records)
+[5/6] report_incident     ✅ SUCCESS
+[6/6] get_compliance_status ✅ SUCCESS
 
-# Port forward
-kubectl port-forward -n policyguard svc/policyguard 8000:8000
+ALL 6 MCP TOOLS WORKING!
+```
 
-# Test MCP endpoint
-curl -X POST http://localhost:8000/mcp \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
+---
+
+## kagent Integration
+
+PolicyGuard can be integrated with [kagent](https://kagent.dev) for Kubernetes-native agent management.
+
+### RemoteMCPServer
+
+```yaml
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  name: policyguard
+spec:
+  protocol: STREAMABLE_HTTP
+  url: http://policyguard.policyguard:8000/mcp
+```
+
+### Agent
+
+```yaml
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: secure-agent
+spec:
+  type: Declarative
+  declarative:
+    systemMessage: "Call validate_action before any operation"
+    tools:
+    - type: McpServer
+      mcpServer:
+        name: policyguard
+        toolNames:
+        - validate_action
+        - register_agent
 ```
 
 ---
 
 ## Security Model
 
-### Trust Level Hierarchy
+### Trust Levels
 
-| Level | Score | Access |
-|-------|-------|--------|
-| `low` | 1 | Read-only, auto-registered agents |
-| `medium` | 2 | Standard operations |
-| `high` | 3 | Sensitive operations |
-| `admin` | 4 | Full access, destructive operations |
+| Level | Score | Use Case |
+|-------|-------|----------|
+| `low` | 1 | Unknown agents, read-only |
+| `medium` | 2 | Verified agents |
+| `high` | 3 | Trusted agents |
+| `admin` | 4 | Full access |
 
-### Policy Evaluation Order
+### Policy Rules
 
-1. Check if agent is suspended → **DENY**
-2. Check `denied_tools` list → **DENY if matched**
-3. Check `allowed_tools` list → **DENY if not in list**
-4. Evaluate policies by priority → **Apply matching rule**
-5. Default → **ALLOW**
-
-### Agent System Prompt (kagent)
-
-The kagent agent is instructed to:
-
+```json
+{
+  "condition": {
+    "tool_pattern": "delete_*",
+    "trust_level_below": "admin"
+  },
+  "action": "deny",
+  "message": "Delete requires admin"
+}
 ```
-CRITICAL RULE: Before performing ANY action, you MUST call 
-validate_action to check if the action is permitted. 
-Never bypass this security check.
-```
+
+### Evaluation Order
+
+1. Agent suspended? → DENY
+2. Tool in denied list? → DENY
+3. Tool not in allowed list? → DENY
+4. Policy match? → Apply rule
+5. Default → ALLOW
 
 ---
 
@@ -468,39 +380,15 @@ Never bypass this security check.
 ```
 policyguard/
 ├── helm/
-│   ├── policyguard/           # MCP Server Helm chart
-│   │   ├── Chart.yaml
-│   │   ├── values.yaml
-│   │   └── templates/
-│   │       ├── deployment.yaml
-│   │       ├── service.yaml
-│   │       ├── configmap.yaml
-│   │       └── remotemcpserver.yaml
-│   │
-│   ├── policyguard-agent/     # kagent Agent Helm chart
-│   │   ├── Chart.yaml
-│   │   ├── values.yaml
-│   │   └── templates/
-│   │       ├── agent.yaml           # kagent Agent CR
-│   │       └── remotemcpserver.yaml
-│   │
-│   └── agentgateway/          # agentgateway Helm chart
+│   └── policyguard/          # Helm chart
 │       ├── Chart.yaml
 │       ├── values.yaml
 │       └── templates/
-│           ├── deployment.yaml
-│           ├── service.yaml
-│           └── configmap.yaml
-│
-├── agentgateway/              # Local agentgateway configs
-│   ├── config.yaml
-│   └── config-local.yaml
-│
-├── src/                       # PolicyGuard MCP Server
-│   ├── main.py
+├── src/
+│   ├── main.py               # Entry point
 │   ├── core/
-│   │   ├── server.py
-│   │   └── utils.py
+│   │   ├── server.py         # MCP server
+│   │   └── utils.py          # Utilities
 │   └── tools/
 │       ├── validate_action.py
 │       ├── register_agent.py
@@ -508,14 +396,31 @@ policyguard/
 │       ├── get_audit_log.py
 │       ├── get_compliance_status.py
 │       └── report_incident.py
-│
-├── tests/                     # Unit tests
-│   └── test_tools.py
-│
+├── tests/
+│   └── test_tools.py         # 16 unit tests
 ├── Dockerfile
 ├── pyproject.toml
 └── README.md
 ```
+
+---
+
+## Technologies Used
+
+- **FastMCP** - Python MCP server SDK
+- **Pydantic** - Data validation
+- **Helm** - Kubernetes packaging
+- **pytest** - Testing
+
+---
+
+## Future Improvements
+
+- [ ] Database backend (PostgreSQL)
+- [ ] Web dashboard UI
+- [ ] Prometheus metrics
+- [ ] RBAC integration
+- [ ] Policy versioning
 
 ---
 
@@ -527,21 +432,20 @@ MIT License
 
 ## Hackathon
 
-**MCP_HACK//26** - "Secure & Govern MCP" Category
+**MCP_HACK//26** - "MCP & AI Agents Starter Track"
 
-This project demonstrates:
+This is my first MCP server project! I built PolicyGuard to learn:
+- How MCP servers work
+- How to expose tools to AI agents
+- How to deploy MCP servers on Kubernetes
+- How security/governance can be implemented at the MCP layer
 
-| Requirement | Implementation |
-|-------------|----------------|
-| **Use kagent** | `policyguard-agent` - A kagent Agent that enforces security |
-| **Use agentgateway** | Network-level security with rate limiting and logging |
-| **Build MCP Server** | PolicyGuard provides 6 security tools via MCP |
-| **Security Focus** | Policy-based access control, trust levels, audit trail |
-| **Kubernetes Native** | Full Helm chart deployment |
+### What I Built
 
-### Technologies Used
-
-- **kagent** - AI agent platform for Kubernetes
-- **agentgateway** - MCP data plane for security
-- **FastMCP** - Python MCP server SDK
-- **Helm** - Kubernetes package manager
+- ✅ 6 MCP tools for security governance
+- ✅ Policy engine with pattern matching
+- ✅ Trust level system
+- ✅ Audit logging and incident tracking
+- ✅ Helm chart for Kubernetes
+- ✅ 16 unit tests
+- ✅ kagent integration examples
