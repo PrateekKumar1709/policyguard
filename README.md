@@ -309,6 +309,24 @@ ALL 6 MCP TOOLS WORKING!
 
 PolicyGuard integrates with [kagent](https://kagent.dev) for Kubernetes-native AI agent management.
 
+### Screenshots
+
+**Agent List** - PolicyGuard agent registered and ready:
+
+![Agent List](docs/images/agent-list.png)
+
+**Agent Tools** - 6 PolicyGuard MCP tools available:
+
+![Agent Tools](docs/images/agent-tools.png)
+
+**Compliance Dashboard** - Asking for compliance status:
+
+![Compliance Chat](docs/images/chat-compliance.png)
+
+**Policy Validation** - Action denied based on policy:
+
+![Validation Chat](docs/images/chat-validation.png)
+
 ### Quick Setup
 
 ```bash
