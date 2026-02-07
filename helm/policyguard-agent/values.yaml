@@ -1,0 +1,28 @@
+# PolicyGuard Agent - kagent configuration
+# This agent enforces security policies before executing any action
+
+# Model configuration reference (must exist in namespace)
+modelConfigRef: "default-model-config"
+
+# PolicyGuard MCP server URL (deployed separately)
+policyguardUrl: "http://policyguard.policyguard:8000/mcp"
+
+# Agent resources
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+# Image pull secrets
+imagePullSecrets: []
+
+# Additional MCP servers the agent can use
+additionalMcpServers: []
+#  - name: k8s-tools
+#    url: http://kagent-tool-server.kagent:8080/mcp
+#    toolNames:
+#      - k8s_get_resources
+#      - k8s_describe_resource

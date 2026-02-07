@@ -1,0 +1,46 @@
+# PolicyGuard agentgateway configuration
+# This configures agentgateway to proxy and secure MCP traffic to PolicyGuard
+#
+# agentgateway provides:
+# - Protocol-level security (authentication, rate limiting)
+# - Network RBAC for MCP servers
+# - Observability and metrics
+# - Request/response logging
+
+binds:
+  # Public-facing port for agents to connect
+  - port: 3000
+    listeners:
+      - routes:
+          - policies:
+              # CORS configuration for web clients
+              cors:
+                allowOrigins:
+                  - "*"
+                allowHeaders:
+                  - mcp-protocol-version
+                  - content-type
+                  - cache-control
+                  - authorization
+                exposeHeaders:
+                  - "Mcp-Session-Id"
+              
+              # Rate limiting (requests per minute)
+              rateLimit:
+                requestsPerMinute: 100
+                burstSize: 20
+
+            backends:
+              - mcp:
+                  targets:
+                    # PolicyGuard MCP server backend
+                    - name: policyguard
+                      # For local development: stdio mode
+                      # stdio:
+                      #   cmd: python
+                      #   args: ["-m", "src.main"]
+                      
+                      # For Kubernetes: HTTP mode
+                      http:
+                        url: http://policyguard:8000/mcp
+                        timeout: 30s

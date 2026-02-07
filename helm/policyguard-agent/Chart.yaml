@@ -1,0 +1,11 @@
+apiVersion: v2
+name: policyguard-agent
+description: A kagent AI Agent that uses PolicyGuard MCP server for security governance
+type: application
+version: 0.1.0
+appVersion: 0.1.0
+dependencies:
+  - name: kagent
+    version: ">=0.1.0"
+    repository: "https://kagent.dev/charts"
+    condition: kagent.enabled

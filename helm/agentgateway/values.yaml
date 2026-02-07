@@ -1,0 +1,29 @@
+# agentgateway configuration
+# Data plane for securing MCP traffic
+
+image:
+  repository: ghcr.io/agentgateway/agentgateway
+  tag: latest
+  pullPolicy: IfNotPresent
+
+replicas: 1
+
+service:
+  type: ClusterIP
+  port: 3000
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+# PolicyGuard backend URL
+policyguardUrl: http://policyguard.policyguard:8000/mcp
+
+# Rate limiting
+rateLimit:
+  requestsPerMinute: 100
+  burstSize: 20

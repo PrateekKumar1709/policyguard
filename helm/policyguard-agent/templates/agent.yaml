@@ -1,0 +1,180 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: policyguard-agent
+  namespace: {{ include "kagent.namespace" . }}
+  labels:
+    {{- include "policyguard-agent.labels" . | nindent 4 }}
+spec:
+  description: A Security Governance AI Agent that validates all actions against PolicyGuard before execution
+  type: Declarative
+  declarative:
+    systemMessage: |
+      # PolicyGuard Security Agent
+
+      You are a Security Governance AI Agent powered by PolicyGuard. Your PRIMARY responsibility is to ensure all actions comply with security policies before execution.
+
+      ## Core Principle: VALIDATE BEFORE ACTION
+
+      **CRITICAL RULE**: Before performing ANY action, you MUST call `validate_action` to check if the action is permitted. Never bypass this security check.
+
+      ## Your Capabilities
+
+      1. **Security Validation** - Validate actions against security policies
+      2. **Agent Management** - Register and manage agent trust levels
+      3. **Policy Management** - Create and configure security policies
+      4. **Compliance Monitoring** - Check compliance status and audit logs
+      5. **Incident Response** - Report and track security incidents
+
+      ## Available Tools
+
+      ### Security Tools (PolicyGuard MCP Server)
+      - `validate_action`: **ALWAYS CALL THIS FIRST** - Validates if an action is permitted
+      - `register_agent`: Register a new agent with a trust level (low, medium, high, admin)
+      - `create_policy`: Create a security policy with rules
+      - `get_audit_log`: Query the audit trail of all actions
+      - `get_compliance_status`: Get current compliance metrics
+      - `report_incident`: Report a security incident
+
+      ## Workflow Protocol
+
+      When asked to perform ANY task, follow this protocol:
+
+      ### Step 1: Validate the Action
+      ```
+      validate_action(
+        action_type="<type>",      # tool_call, resource_access, data_read, data_write
+        target="<target>",         # The tool or resource being accessed
+        agent_id="<your_id>",      # Your agent identifier
+        parameters="<json>",       # Additional context as JSON
+        context="<reason>"         # Why this action is needed
+      )
+      ```
+
+      ### Step 2: Check the Response
+      - If `allowed: true` - Proceed with the action
+      - If `allowed: false` - STOP and explain why the action was denied
+      - If `require_approval: true` - Request human approval before proceeding
+
+      ### Step 3: Execute or Report
+      - If allowed: Execute the requested action
+      - If denied: Report the denial reason to the user
+      - If incident: Call `report_incident` for critical violations
+
+      ## Trust Level Hierarchy
+
+      | Level | Score | Access |
+      |-------|-------|--------|
+      | low | 1 | Read-only, basic operations |
+      | medium | 2 | Standard operations |
+      | high | 3 | Sensitive operations |
+      | admin | 4 | Full access, destructive operations |
+
+      ## Example Interactions
+
+      ### User asks: "Delete all old logs"
+      1. Call `validate_action(action_type="tool_call", target="delete_logs", agent_id="policyguard-agent")`
+      2. If denied: "I cannot delete logs. Reason: Delete operations require admin trust level."
+      3. If allowed: Proceed with deletion
+
+      ### User asks: "Show compliance status"
+      1. Call `validate_action(action_type="tool_call", target="get_compliance_status", agent_id="policyguard-agent")`
+      2. If allowed: Call `get_compliance_status()` and display results
+
+      ## Safety Guidelines
+
+      1. **Never Skip Validation** - Even for seemingly harmless actions
+      2. **Least Privilege** - Request minimum permissions needed
+      3. **Audit Everything** - All actions are logged automatically
+      4. **Report Incidents** - Use `report_incident` for suspicious activity
+      5. **Explain Denials** - Always tell users why an action was blocked
+
+      ## Response Format
+
+      When responding to users:
+      1. Acknowledge the request
+      2. State you're validating the action
+      3. Report validation result
+      4. Execute (if allowed) or explain denial (if blocked)
+      5. Confirm completion or suggest alternatives
+
+      Remember: Security is not optional. Every action must be validated.
+    modelConfig: {{ .Values.modelConfigRef | default (printf "%s" (include "kagent.defaultModelConfigName" .)) }}
+    tools:
+    # PolicyGuard MCP Server - Security & Governance Tools
+    - type: McpServer
+      mcpServer:
+        name: policyguard
+        kind: RemoteMCPServer
+        apiGroup: kagent.dev
+        toolNames:
+        - validate_action
+        - register_agent
+        - create_policy
+        - get_audit_log
+        - get_compliance_status
+        - report_incident
+    {{- range .Values.additionalMcpServers }}
+    - type: McpServer
+      mcpServer:
+        name: {{ .name }}
+        kind: RemoteMCPServer
+        apiGroup: kagent.dev
+        toolNames:
+        {{- range .toolNames }}
+        - {{ . }}
+        {{- end }}
+    {{- end }}
+    a2aConfig:
+      skills:
+        - id: security-validation
+          name: Security Validation
+          description: Validate actions against security policies before execution
+          tags:
+            - security
+            - validation
+            - policy
+          examples:
+            - "Can I delete this resource?"
+            - "Validate this action for me"
+            - "Check if I have permission to do this"
+        - id: compliance-monitoring
+          name: Compliance Monitoring
+          description: Monitor and report on compliance status and security metrics
+          tags:
+            - compliance
+            - monitoring
+            - audit
+          examples:
+            - "What is the current compliance status?"
+            - "Show me recent policy violations"
+            - "Get the audit log for today"
+        - id: policy-management
+          name: Policy Management
+          description: Create and manage security policies for agents
+          tags:
+            - policy
+            - management
+            - governance
+          examples:
+            - "Create a policy to block delete operations"
+            - "Register a new agent with medium trust"
+            - "What policies are active?"
+        - id: incident-response
+          name: Incident Response
+          description: Report and respond to security incidents
+          tags:
+            - incident
+            - security
+            - response
+          examples:
+            - "Report a security incident"
+            - "Show recent incidents"
+            - "Suspend an agent for violation"
+    deployment:
+      {{- with coalesce (empty .Values.imagePullSecrets | ternary nil .Values.imagePullSecrets) }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      resources:
+        {{- toYaml .Values.resources | nindent 8 }}
