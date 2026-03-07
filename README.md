@@ -8,7 +8,6 @@
 
 PolicyGuard is an MCP (Model Context Protocol) server that provides policy-based access control, incident tracking, and compliance monitoring for AI agents. 
 
-Built for **MCP_HACK//26** hackathon - **"MCP & AI Agents Starter Track"** and **"Secure & Govern MCP"** categories.
 
 > **Note:** This project demonstrates working integration with **kagent** (AI agent platform) and can be extended with **kgateway** (API gateway) for additional network-level security.
 
